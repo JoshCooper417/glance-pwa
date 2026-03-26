@@ -344,6 +344,155 @@
       color: rgba(255,255,255,0.7);
       cursor: pointer;
     }
+
+    /* DEBUG TOGGLE */
+    #debug-toggle-wrap {
+      position: fixed;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
+      left: calc(env(safe-area-inset-left, 0px) + 12px);
+      z-index: 300;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      direction: ltr;
+    }
+
+    #debug-toggle-wrap label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: rgba(255,255,255,0.35);
+      cursor: pointer;
+      user-select: none;
+      letter-spacing: 0.08em;
+    }
+
+    #debug-checkbox {
+      cursor: pointer;
+      accent-color: #9ca3af;
+      width: 12px;
+      height: 12px;
+    }
+
+    /* DEBUG PANEL */
+    #debug-panel {
+      position: fixed;
+      inset: 0;
+      z-index: 400;
+      background: rgba(0,0,0,0.92);
+      display: none;
+      flex-direction: column;
+      padding:
+        calc(env(safe-area-inset-top, 0px) + 12px)
+        calc(env(safe-area-inset-right, 0px) + 14px)
+        calc(env(safe-area-inset-bottom, 0px) + 12px)
+        calc(env(safe-area-inset-left, 0px) + 14px);
+      overflow-y: auto;
+      direction: ltr;
+    }
+
+    #debug-panel.open { display: flex; }
+
+    #debug-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    #debug-header h2 {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 13px;
+      font-weight: 600;
+      color: #9ca3af;
+      letter-spacing: 0.15em;
+      text-transform: uppercase;
+    }
+
+    #debug-close {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #6b7280;
+      background: none;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      padding: 3px 8px;
+      cursor: pointer;
+    }
+
+    .dbg-section {
+      margin-bottom: 14px;
+      flex-shrink: 0;
+    }
+
+    .dbg-section-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 9px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: #4b5563;
+      margin-bottom: 5px;
+      border-bottom: 1px solid #1f2937;
+      padding-bottom: 3px;
+    }
+
+    .dbg-row {
+      display: flex;
+      gap: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      line-height: 1.7;
+    }
+
+    .dbg-key {
+      color: #6b7280;
+      flex-shrink: 0;
+      min-width: 130px;
+    }
+
+    .dbg-val {
+      color: #e5e7eb;
+      word-break: break-all;
+    }
+
+    .dbg-val.ok   { color: #22c55e; }
+    .dbg-val.warn { color: #fde047; }
+    .dbg-val.err  { color: #ef4444; }
+
+    #debug-raw {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #6b7280;
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 6px;
+      padding: 10px;
+      white-space: pre-wrap;
+      word-break: break-all;
+      max-height: 220px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    #debug-log {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: #6b7280;
+      background: #111827;
+      border: 1px solid #1f2937;
+      border-radius: 6px;
+      padding: 10px;
+      max-height: 160px;
+      overflow-y: auto;
+      margin-top: 4px;
+    }
+
+    .log-entry { line-height: 1.6; }
+    .log-entry.ok   { color: #22c55e; }
+    .log-entry.warn { color: #fde047; }
+    .log-entry.err  { color: #ef4444; }
+    .log-entry.gray { color: #6b7280; }
   </style>
 </head>
 <body>
@@ -383,6 +532,54 @@
     </div>
   </div>
 
+  <!-- Debug toggle (always visible, low opacity) -->
+  <div id="debug-toggle-wrap">
+    <input type="checkbox" id="debug-checkbox" />
+    <label for="debug-checkbox">DEBUG</label>
+  </div>
+
+  <!-- Debug panel -->
+  <div id="debug-panel">
+    <div id="debug-header">
+      <h2>⬛ Debug</h2>
+      <button id="debug-close">Close</button>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-section-title">State</div>
+      <div class="dbg-row"><span class="dbg-key">current state</span><span class="dbg-val" id="dbg-state">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">poll count</span><span class="dbg-val" id="dbg-poll-count">0</span></div>
+      <div class="dbg-row"><span class="dbg-key">success count</span><span class="dbg-val ok" id="dbg-ok-count">0</span></div>
+      <div class="dbg-row"><span class="dbg-key">error count</span><span class="dbg-val err" id="dbg-err-count">0</span></div>
+      <div class="dbg-row"><span class="dbg-key">last check</span><span class="dbg-val" id="dbg-last-check">—</span></div>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-section-title">Last API Response</div>
+      <div class="dbg-row"><span class="dbg-key">ok</span><span class="dbg-val" id="dbg-ok">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">http status</span><span class="dbg-val" id="dbg-http-status">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">error field</span><span class="dbg-val" id="dbg-error-field">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">data.cat</span><span class="dbg-val" id="dbg-cat">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">data.data length</span><span class="dbg-val" id="dbg-data-len">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">town match</span><span class="dbg-val" id="dbg-town-match">—</span></div>
+      <div id="debug-raw">—</div>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-section-title">Environment</div>
+      <div class="dbg-row"><span class="dbg-key">SW state</span><span class="dbg-val" id="dbg-sw-state">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">notification perm</span><span class="dbg-val" id="dbg-notif-perm">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">badge API</span><span class="dbg-val" id="dbg-badge-api">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">display mode</span><span class="dbg-val" id="dbg-display-mode">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">user agent</span><span class="dbg-val" id="dbg-ua">—</span></div>
+    </div>
+
+    <div class="dbg-section">
+      <div class="dbg-section-title">Poll Log (last 20)</div>
+      <div id="debug-log"></div>
+    </div>
+  </div>
+
   <div id="ios-modal">
     <div id="ios-modal-inner">
       <h2>Add Glance to Home Screen</h2>
@@ -415,6 +612,110 @@
     const notifLater = document.getElementById('notif-later');
     const iosModal = document.getElementById('ios-modal');
     const iosModalClose = document.getElementById('ios-modal-close');
+
+    // ── Debug ──────────────────────────────────────────────────────────────────
+    const debugCheckbox = document.getElementById('debug-checkbox');
+    const debugPanel = document.getElementById('debug-panel');
+    const debugClose = document.getElementById('debug-close');
+
+    let dbgPollCount = 0, dbgOkCount = 0, dbgErrCount = 0;
+    const dbgLog = [];
+
+    debugCheckbox.addEventListener('change', () => {
+      if (debugCheckbox.checked) {
+        debugPanel.classList.add('open');
+        refreshDebugEnv();
+      } else {
+        debugPanel.classList.remove('open');
+      }
+    });
+    debugClose.addEventListener('click', () => {
+      debugCheckbox.checked = false;
+      debugPanel.classList.remove('open');
+    });
+
+    function refreshDebugEnv() {
+      // SW state
+      if ('serviceWorker' in navigator && navigator.serviceWorker.controller) {
+        document.getElementById('dbg-sw-state').textContent = 'active (controlling)';
+        document.getElementById('dbg-sw-state').className = 'dbg-val ok';
+      } else if ('serviceWorker' in navigator) {
+        navigator.serviceWorker.getRegistration().then(reg => {
+          const el = document.getElementById('dbg-sw-state');
+          if (!reg) { el.textContent = 'not registered'; el.className = 'dbg-val err'; }
+          else if (reg.installing) { el.textContent = 'installing'; el.className = 'dbg-val warn'; }
+          else if (reg.waiting) { el.textContent = 'waiting'; el.className = 'dbg-val warn'; }
+          else if (reg.active) { el.textContent = 'active (not controlling)'; el.className = 'dbg-val warn'; }
+        });
+      } else {
+        document.getElementById('dbg-sw-state').textContent = 'not supported';
+        document.getElementById('dbg-sw-state').className = 'dbg-val err';
+      }
+
+      // Notification permission
+      const np = document.getElementById('dbg-notif-perm');
+      const perm = typeof Notification !== 'undefined' ? Notification.permission : 'unsupported';
+      np.textContent = perm;
+      np.className = 'dbg-val ' + (perm === 'granted' ? 'ok' : perm === 'denied' ? 'err' : 'warn');
+
+      // Badge API
+      const ba = document.getElementById('dbg-badge-api');
+      ba.textContent = navigator.setAppBadge ? 'supported' : 'not supported';
+      ba.className = 'dbg-val ' + (navigator.setAppBadge ? 'ok' : 'warn');
+
+      // Display mode
+      const dm = window.matchMedia('(display-mode: standalone)').matches ? 'standalone'
+               : window.matchMedia('(display-mode: fullscreen)').matches ? 'fullscreen'
+               : 'browser';
+      document.getElementById('dbg-display-mode').textContent = dm;
+
+      // UA
+      document.getElementById('dbg-ua').textContent = navigator.userAgent;
+    }
+
+    function updateDebugPoll(data, httpStatus, state) {
+      dbgPollCount++;
+      if (data.ok) dbgOkCount++; else dbgErrCount++;
+
+      document.getElementById('dbg-poll-count').textContent = dbgPollCount;
+      document.getElementById('dbg-ok-count').textContent = dbgOkCount;
+      document.getElementById('dbg-err-count').textContent = dbgErrCount;
+      document.getElementById('dbg-last-check').textContent = new Date().toTimeString().slice(0, 8);
+
+      const stateEl = document.getElementById('dbg-state');
+      stateEl.textContent = state;
+      stateEl.className = 'dbg-val ' + (state === 'green' ? 'ok' : state === 'red' ? 'err' : state === 'yellow' ? 'warn' : 'gray');
+
+      const okEl = document.getElementById('dbg-ok');
+      okEl.textContent = String(data.ok);
+      okEl.className = 'dbg-val ' + (data.ok ? 'ok' : 'err');
+
+      document.getElementById('dbg-http-status').textContent = httpStatus !== null ? String(httpStatus) : '—';
+      document.getElementById('dbg-error-field').textContent = data.error || '—';
+      document.getElementById('dbg-cat').textContent = data.cat !== undefined ? String(data.cat) : '—';
+
+      const dataLen = Array.isArray(data.data) ? data.data.length : '—';
+      document.getElementById('dbg-data-len').textContent = String(dataLen);
+
+      const townMatch = Array.isArray(data.data)
+        ? data.data.some(i => typeof i === 'string' && i.trim() === TOWN)
+        : false;
+      const tmEl = document.getElementById('dbg-town-match');
+      tmEl.textContent = Array.isArray(data.data) ? String(townMatch) : '—';
+      tmEl.className = 'dbg-val ' + (townMatch ? 'warn' : 'ok');
+
+      document.getElementById('debug-raw').textContent = JSON.stringify(data, null, 2);
+
+      // Log entry
+      const ts = new Date().toTimeString().slice(0, 8);
+      const label = data.ok ? `[${ts}] ok · state=${state}${data.cat !== undefined ? ' cat=' + data.cat : ''}` : `[${ts}] FAIL · ${data.error}`;
+      const cls = data.ok ? (state === 'green' ? 'ok' : state === 'red' ? 'err' : 'warn') : 'err';
+      dbgLog.unshift({ label, cls });
+      if (dbgLog.length > 20) dbgLog.pop();
+
+      const logEl = document.getElementById('debug-log');
+      logEl.innerHTML = dbgLog.map(e => `<div class="log-entry ${e.cls}">${e.label}</div>`).join('');
+    }
 
     const STATES = {
       green: {
@@ -500,8 +801,10 @@
 
     async function poll() {
       let data = { ok: false, error: 'network_error' };
+      let httpStatus = null;
       try {
         const res = await fetch(`${PROXY_URL}?t=${Date.now()}`, { cache: 'no-store' });
+        httpStatus = res.status;
         const text = await res.text();
         if (text && text.trim() && text.trim() !== '\r\n') {
           try { data = JSON.parse(text); } catch (_) { data = { ok: false, error: 'parse_error' }; }
@@ -518,6 +821,19 @@
       const hm = lastCheckTime.toTimeString().slice(0, 8);
       const suffix = data.ok === false ? ` · ⚠ ${data.error}` : ' · every 2s';
       pollStatus.textContent = `Last check: ${hm}${suffix}`;
+
+      if (debugPanel.classList.contains('open')) {
+        updateDebugPoll(data, httpStatus, state);
+      } else {
+        // always update counters even when panel is closed
+        dbgPollCount++;
+        if (data.ok) dbgOkCount++; else dbgErrCount++;
+        const ts = new Date().toTimeString().slice(0, 8);
+        const label = data.ok ? `[${ts}] ok · state=${state}${data.cat !== undefined ? ' cat=' + data.cat : ''}` : `[${ts}] FAIL · ${data.error}`;
+        const cls = data.ok ? (state === 'green' ? 'ok' : state === 'red' ? 'err' : 'warn') : 'err';
+        dbgLog.unshift({ label, cls });
+        if (dbgLog.length > 20) dbgLog.pop();
+      }
     }
 
     poll();

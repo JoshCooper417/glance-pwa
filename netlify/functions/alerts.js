@@ -35,7 +35,7 @@ exports.handler = async function handler(event, context) {
     try {
       data = JSON.parse(text);
     } catch (_) {
-      return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: 'parse_error' }) };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: 'parse_error', raw: text.slice(0, 1000) }) };
     }
 
     return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ...data }) };

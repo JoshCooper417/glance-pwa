@@ -35,7 +35,7 @@ export default async function handler(req, res) {
     try {
       data = JSON.parse(text);
     } catch (_) {
-      res.status(200).json({ ok: false, error: 'parse_error' });
+      res.status(200).json({ ok: false, error: 'parse_error', raw: text.slice(0, 1000) });
       return;
     }
 

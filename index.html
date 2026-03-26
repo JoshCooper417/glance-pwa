@@ -704,7 +704,10 @@
       tmEl.textContent = Array.isArray(data.data) ? String(townMatch) : '—';
       tmEl.className = 'dbg-val ' + (townMatch ? 'warn' : 'ok');
 
-      document.getElementById('debug-raw').textContent = JSON.stringify(data, null, 2);
+      const rawDisplay = data.raw != null
+        ? `/* Oref raw response */\n${data.raw}\n\n/* Full proxy response */\n${JSON.stringify(data, null, 2)}`
+        : JSON.stringify(data, null, 2);
+      document.getElementById('debug-raw').textContent = rawDisplay;
 
       // Log entry
       const ts = new Date().toTimeString().slice(0, 8);

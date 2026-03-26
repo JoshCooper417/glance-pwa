@@ -1,0 +1,20 @@
+{
+  "routes": [
+    {
+      "src": "/api/alerts",
+      "dest": "/api/alerts.js"
+    },
+    {
+      "src": "/sw.js",
+      "dest": "/sw.js",
+      "headers": {
+        "Cache-Control": "no-cache, no-store, must-revalidate",
+        "Service-Worker-Allowed": "/"
+      }
+    },
+    {
+      "src": "/(.*)",
+      "dest": "/$1"
+    }
+  ]
+}

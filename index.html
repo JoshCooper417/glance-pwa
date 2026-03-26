@@ -1,0 +1,577 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+  <meta name="theme-color" id="theme-color-meta" content="#15803d" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="apple-mobile-web-app-title" content="Glance" />
+  <title>Glance — גבעות עדן</title>
+  <link rel="manifest" href="/manifest.json" />
+  <link rel="apple-touch-icon" href="/icons/icon-green-192.png" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600&family=Heebo:wght@700;900&display=swap" rel="stylesheet" />
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --c-green: #15803d;
+      --c-green-light: #22c55e;
+      --c-yellow: #ca8a04;
+      --c-yellow-light: #fde047;
+      --c-red: #b91c1c;
+      --c-red-light: #ef4444;
+      --transition: 0.4s ease;
+    }
+
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      font-family: 'IBM Plex Mono', monospace;
+    }
+
+    #app {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      min-height: 100dvh;
+      display: flex;
+      flex-direction: column;
+      background-color: var(--c-green);
+      transition: background-color var(--transition);
+      padding:
+        calc(env(safe-area-inset-top, 0px) + 12px)
+        calc(env(safe-area-inset-right, 0px) + 16px)
+        calc(env(safe-area-inset-bottom, 0px) + 12px)
+        calc(env(safe-area-inset-left, 0px) + 16px);
+      overflow: hidden;
+    }
+
+    /* noise overlay */
+    #noise {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 1;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='200' height='200'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='200' height='200' filter='url(%23n)' opacity='0.06'/%3E%3C/svg%3E");
+      opacity: 0.5;
+    }
+
+    /* red flash overlay */
+    #flash-overlay {
+      position: absolute;
+      inset: 0;
+      pointer-events: none;
+      z-index: 2;
+      background-color: #ff0000;
+      opacity: 0;
+    }
+
+    #app.state-red #flash-overlay {
+      animation: flash 1.2s ease-in-out infinite;
+    }
+
+    @keyframes flash {
+      0%, 100% { opacity: 0; }
+      50% { opacity: 0.18; }
+    }
+
+    /* state backgrounds */
+    #app.state-green { background-color: var(--c-green); }
+    #app.state-yellow { background-color: var(--c-yellow); }
+    #app.state-red { background-color: var(--c-red); }
+
+    /* TOP BAR */
+    #top-bar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    #app-title {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.12em;
+      color: rgba(255,255,255,0.65);
+      text-transform: uppercase;
+    }
+
+    #clock {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 400;
+      color: rgba(255,255,255,0.65);
+      letter-spacing: 0.08em;
+      direction: ltr;
+    }
+
+    /* CENTER */
+    #center {
+      position: relative;
+      z-index: 10;
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      gap: 16px;
+      text-align: center;
+    }
+
+    #state-icon-wrap {
+      width: 80px;
+      height: 80px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.15);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 40px;
+      line-height: 1;
+      transition: transform 0.3s ease;
+    }
+
+    #app.state-red #state-icon-wrap {
+      animation: pulse 0.8s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { transform: scale(1); }
+      50% { transform: scale(1.12); }
+    }
+
+    #status-label {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.2em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.8);
+    }
+
+    #main-msg {
+      font-family: 'Heebo', sans-serif;
+      font-weight: 900;
+      font-size: clamp(28px, 7vw, 48px);
+      color: #ffffff;
+      line-height: 1.2;
+      direction: rtl;
+    }
+
+    #sub-msg {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(11px, 2.5vw, 14px);
+      font-weight: 400;
+      color: rgba(255,255,255,0.75);
+      letter-spacing: 0.04em;
+      max-width: 320px;
+      line-height: 1.5;
+      direction: ltr;
+    }
+
+    #town-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(255,255,255,0.15);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-family: 'Heebo', sans-serif;
+      font-size: 14px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    #town-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--c-green-light);
+      flex-shrink: 0;
+      transition: background var(--transition);
+    }
+
+    #app.state-yellow #town-dot { background: var(--c-yellow-light); }
+    #app.state-red #town-dot { background: var(--c-red-light); }
+
+    /* BOTTOM BAR */
+    #bottom-bar {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      flex-shrink: 0;
+    }
+
+    #poll-status {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      color: rgba(255,255,255,0.5);
+      direction: ltr;
+      text-align: left;
+    }
+
+    #install-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: rgba(255,255,255,0.7);
+      background: rgba(255,255,255,0.12);
+      border: 1px solid rgba(255,255,255,0.25);
+      border-radius: 4px;
+      padding: 5px 10px;
+      cursor: pointer;
+      display: none;
+    }
+
+    #install-btn:active { opacity: 0.7; }
+
+    /* NOTIFICATION BANNER */
+    #notif-banner {
+      position: absolute;
+      bottom: calc(env(safe-area-inset-bottom, 0px) + 60px);
+      left: 16px;
+      right: 16px;
+      z-index: 100;
+      background: rgba(0,0,0,0.85);
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 12px;
+      padding: 16px;
+      display: none;
+    }
+
+    #notif-banner p {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.85);
+      line-height: 1.6;
+      margin-bottom: 12px;
+      direction: ltr;
+    }
+
+    #notif-banner .banner-btns {
+      display: flex;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    #notif-banner button {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      padding: 6px 14px;
+      border-radius: 6px;
+      cursor: pointer;
+      border: none;
+    }
+
+    #notif-allow {
+      background: #22c55e;
+      color: #000;
+    }
+
+    #notif-later {
+      background: rgba(255,255,255,0.1);
+      color: rgba(255,255,255,0.7);
+    }
+
+    /* iOS MODAL */
+    #ios-modal {
+      position: absolute;
+      inset: 0;
+      z-index: 200;
+      background: rgba(0,0,0,0.75);
+      display: none;
+      align-items: flex-end;
+      justify-content: center;
+      padding: 0 8px calc(env(safe-area-inset-bottom, 0px) + 8px);
+    }
+
+    #ios-modal.open { display: flex; }
+
+    #ios-modal-inner {
+      background: #1a1a1a;
+      border-radius: 16px;
+      padding: 24px;
+      width: 100%;
+      max-width: 400px;
+    }
+
+    #ios-modal-inner h2 {
+      font-family: 'Heebo', sans-serif;
+      font-size: 18px;
+      font-weight: 700;
+      color: #fff;
+      margin-bottom: 16px;
+      direction: ltr;
+    }
+
+    #ios-modal-inner ol {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.75);
+      line-height: 1.8;
+      padding-right: 20px;
+      direction: ltr;
+      list-style: decimal;
+    }
+
+    #ios-modal-close {
+      margin-top: 16px;
+      width: 100%;
+      padding: 10px;
+      background: rgba(255,255,255,0.1);
+      border: none;
+      border-radius: 8px;
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 12px;
+      color: rgba(255,255,255,0.7);
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+  <div id="app" class="state-green">
+    <div id="noise"></div>
+    <div id="flash-overlay"></div>
+
+    <div id="top-bar">
+      <span id="app-title">GLANCE · גבעות עדן</span>
+      <span id="clock">--:--:--</span>
+    </div>
+
+    <div id="center">
+      <div id="state-icon-wrap">
+        <span id="state-icon">🟢</span>
+      </div>
+      <div id="status-label">STATUS · SAFE</div>
+      <div id="main-msg">מצב רגיל</div>
+      <div id="sub-msg">Status: Safe. Normal activity.</div>
+      <div id="town-badge">
+        <span id="town-dot"></span>
+        <span>גבעות עדן</span>
+      </div>
+    </div>
+
+    <div id="bottom-bar">
+      <div id="poll-status">Checking…</div>
+      <button id="install-btn">＋ ADD TO HOME</button>
+    </div>
+
+    <div id="notif-banner">
+      <p>Allow notifications to pin a live 🟢🟡🔴 Glance status to your notification shade — always visible without opening the app.</p>
+      <div class="banner-btns">
+        <button id="notif-later">Later</button>
+        <button id="notif-allow">Allow</button>
+      </div>
+    </div>
+  </div>
+
+  <div id="ios-modal">
+    <div id="ios-modal-inner">
+      <h2>Add Glance to Home Screen</h2>
+      <ol>
+        <li>Tap the <strong>Share</strong> button (□↑) at the bottom of Safari</li>
+        <li>Scroll down and tap <strong>"Add to Home Screen"</strong></li>
+        <li>Tap <strong>Add</strong> in the top-right corner</li>
+        <li>Open Glance from your home screen for full-screen mode</li>
+      </ol>
+      <button id="ios-modal-close">Close</button>
+    </div>
+  </div>
+
+  <script>
+    const PROXY_URL = '/api/alerts';
+    const TOWN = 'גבעות עדן';
+    const POLL_INTERVAL = 2000;
+
+    const app = document.getElementById('app');
+    const clockEl = document.getElementById('clock');
+    const stateIcon = document.getElementById('state-icon');
+    const statusLabel = document.getElementById('status-label');
+    const mainMsg = document.getElementById('main-msg');
+    const subMsg = document.getElementById('sub-msg');
+    const themeMeta = document.getElementById('theme-color-meta');
+    const pollStatus = document.getElementById('poll-status');
+    const installBtn = document.getElementById('install-btn');
+    const notifBanner = document.getElementById('notif-banner');
+    const notifAllow = document.getElementById('notif-allow');
+    const notifLater = document.getElementById('notif-later');
+    const iosModal = document.getElementById('ios-modal');
+    const iosModalClose = document.getElementById('ios-modal-close');
+
+    const STATES = {
+      green: {
+        class: 'state-green',
+        icon: '🟢',
+        label: 'STATUS · SAFE',
+        main: 'מצב רגיל',
+        sub: 'Status: Safe. Normal activity.',
+        theme: '#15803d',
+        badge: 0,
+      },
+      yellow: {
+        class: 'state-yellow',
+        icon: '🟡',
+        label: 'STATUS · CAUTION',
+        main: 'הישארו ליד מרחב מוגן',
+        sub: 'STAY NEAR SHELTER. Preliminary warning issued.',
+        theme: '#ca8a04',
+        badge: 1,
+      },
+      red: {
+        class: 'state-red',
+        icon: '🔴',
+        label: 'STATUS · ALERT',
+        main: 'היכנסו למרחב המוגן עכשיו',
+        sub: 'ENTER SHELTER NOW. ACTIVE SIREN.',
+        theme: '#b91c1c',
+        badge: 9,
+      },
+    };
+
+    let currentState = 'green';
+
+    function applyState(state) {
+      if (!STATES[state]) return;
+      const s = STATES[state];
+      currentState = state;
+
+      app.className = s.class;
+      stateIcon.textContent = s.icon;
+      statusLabel.textContent = s.label;
+      mainMsg.textContent = s.main;
+      subMsg.textContent = s.sub;
+      themeMeta.content = s.theme;
+
+      if (s.badge === 0) {
+        if (navigator.clearAppBadge) navigator.clearAppBadge().catch(() => {});
+      } else {
+        if (navigator.setAppBadge) navigator.setAppBadge(s.badge).catch(() => {});
+      }
+    }
+
+    function parseState(data) {
+      if (!data || !Array.isArray(data.data)) return 'green';
+      const items = data.data;
+      const found = items.some(item => typeof item === 'string' && item.trim() === TOWN);
+      if (!found) return 'green';
+      const cat = data.cat;
+      if (cat === 1 || cat === 2) return 'red';
+      if (cat === 13) return 'yellow';
+      return 'green';
+    }
+
+    // Clock
+    function tickClock() {
+      const now = new Date();
+      clockEl.textContent = now.toTimeString().slice(0, 8);
+    }
+    tickClock();
+    setInterval(tickClock, 1000);
+
+    // Polling
+    let lastCheckTime = null;
+
+    async function poll() {
+      try {
+        const res = await fetch(`${PROXY_URL}?t=${Date.now()}`, { cache: 'no-store' });
+        const text = await res.text();
+        let data = {};
+        if (text && text.trim() && text.trim() !== '\r\n') {
+          try { data = JSON.parse(text); } catch (_) { data = {}; }
+        }
+        const state = parseState(data);
+        applyState(state);
+        lastCheckTime = new Date();
+        const hm = lastCheckTime.toTimeString().slice(0, 8);
+        pollStatus.textContent = `Last check: ${hm} · every 2s`;
+      } catch (e) {
+        pollStatus.textContent = `Poll error · retrying…`;
+      }
+    }
+
+    poll();
+    setInterval(poll, POLL_INTERVAL);
+
+    // Service Worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('/sw.js').then(reg => {
+        reg.addEventListener('updatefound', () => {
+          const newSW = reg.installing;
+          newSW.addEventListener('statechange', () => {
+            if (newSW.state === 'installed' && navigator.serviceWorker.controller) {
+              newSW.postMessage({ type: 'SKIP_WAITING' });
+            }
+          });
+        });
+      });
+
+      navigator.serviceWorker.addEventListener('message', e => {
+        if (e.data && e.data.type === 'STATE_CHANGE') {
+          applyState(e.data.state);
+        }
+      });
+    }
+
+    // Notification banner
+    function showNotifBanner() {
+      if (Notification.permission === 'default' && !localStorage.getItem('notif-asked')) {
+        notifBanner.style.display = 'block';
+      }
+    }
+    setTimeout(showNotifBanner, 2000);
+
+    notifAllow.addEventListener('click', () => {
+      Notification.requestPermission().then(() => {
+        localStorage.setItem('notif-asked', '1');
+        notifBanner.style.display = 'none';
+      });
+    });
+    notifLater.addEventListener('click', () => {
+      localStorage.setItem('notif-asked', '1');
+      notifBanner.style.display = 'none';
+    });
+
+    // Install handling
+    let deferredPrompt = null;
+    const isIOS = /iphone|ipad|ipod/i.test(navigator.userAgent) && !window.MSStream;
+    const isInStandalone = window.matchMedia('(display-mode: standalone)').matches || navigator.standalone;
+
+    if (isIOS && !isInStandalone) {
+      installBtn.style.display = 'block';
+      installBtn.addEventListener('click', () => { iosModal.classList.add('open'); });
+    }
+
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredPrompt = e;
+      installBtn.style.display = 'block';
+    });
+
+    installBtn.addEventListener('click', () => {
+      if (deferredPrompt) {
+        deferredPrompt.prompt();
+        deferredPrompt.userChoice.then(() => { deferredPrompt = null; installBtn.style.display = 'none'; });
+      }
+    });
+
+    iosModalClose.addEventListener('click', () => { iosModal.classList.remove('open'); });
+    iosModal.addEventListener('click', e => { if (e.target === iosModal) iosModal.classList.remove('open'); });
+
+    window.addEventListener('appinstalled', () => { installBtn.style.display = 'none'; });
+  </script>
+</body>
+</html>

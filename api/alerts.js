@@ -33,7 +33,7 @@ export default async function handler(req, res) {
 
     let data;
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(text.replace(/^\uFEFF/, ''));
     } catch (_) {
       res.status(200).json({ ok: false, error: 'parse_error', raw: text.slice(0, 1000) });
       return;

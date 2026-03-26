@@ -33,7 +33,7 @@ exports.handler = async function handler(event, context) {
 
     let data;
     try {
-      data = JSON.parse(text);
+      data = JSON.parse(text.replace(/^\uFEFF/, ''));
     } catch (_) {
       return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: 'parse_error', raw: text.slice(0, 1000) }) };
     }

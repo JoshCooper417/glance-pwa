@@ -13,7 +13,7 @@ function parseState(data) {
   if (!Array.isArray(data.data)) return 'green';
   const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
   if (!found) return 'green';
-  const cat = data.cat;
+  const cat = Number(data.cat);
   if (cat === 1 || cat === 2) return 'red';
   if (cat === 13) return 'yellow';
   return 'green';

@@ -27,7 +27,7 @@ const STATE_NOTIF = {
     icon: '/icons/icon-green-192.png',
     silent: true,
     vibrate: null,
-    requireInteraction: false,
+    requireInteraction: true,
     badge: 0,
     actions: [],
   },

@@ -28,18 +28,19 @@ exports.handler = async function handler(event, context) {
     const text = await upstream.text();
 
     if (!text || !text.trim() || text.trim() === '\r\n') {
-      return { statusCode: 200, headers, body: '{}' };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
 
     let data;
     try {
       data = JSON.parse(text);
     } catch (_) {
-      return { statusCode: 200, headers, body: '{}' };
+      return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: 'parse_error' }) };
     }
 
-    return { statusCode: 200, headers, body: JSON.stringify(data) };
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: true, ...data }) };
   } catch (err) {
-    return { statusCode: 200, headers, body: '{}' };
+    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+    return { statusCode: 200, headers, body: JSON.stringify({ ok: false, error: isTimeout ? 'timeout' : 'network_error' }) };
   }
 };

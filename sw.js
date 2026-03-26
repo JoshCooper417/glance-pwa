@@ -9,7 +9,8 @@ let pollTimer = null;
 // ── State parsing ─────────────────────────────────────────────────────────────
 
 function parseState(data) {
-  if (!data || !Array.isArray(data.data)) return 'green';
+  if (!data || data.ok === false) return 'gray';
+  if (!Array.isArray(data.data)) return 'green';
   const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
   if (!found) return 'green';
   const cat = data.cat;
@@ -49,6 +50,16 @@ const STATE_NOTIF = {
     vibrate: [300, 100, 300, 100, 300, 100, 300],
     requireInteraction: true,
     badge: 9,
+    actions: [{ action: 'open', title: '👁 Open Glance' }],
+  },
+  gray: {
+    title: '⚫ גבעות עדן — Status Unknown',
+    body: 'Cannot reach alert service. Status unknown.',
+    icon: '/icons/icon-green-192.png',
+    silent: true,
+    vibrate: null,
+    requireInteraction: true,
+    badge: 1,
     actions: [{ action: 'open', title: '👁 Open Glance' }],
   },
 };
@@ -94,23 +105,25 @@ async function broadcastState(state) {
 // ── Polling ───────────────────────────────────────────────────────────────────
 
 async function doPoll() {
+  let data = { ok: false, error: 'network_error' };
   try {
     const res = await fetch(`${PROXY_URL}?t=${Date.now()}`, { cache: 'no-store' });
     const text = await res.text();
-    let data = {};
     if (text && text.trim() && text.trim() !== '\r\n') {
-      try { data = JSON.parse(text); } catch (_) { data = {}; }
-    }
-    const state = parseState(data);
-
-    if (state !== lastState) {
-      lastState = state;
-      await postNotification(state);
-      await updateBadge(state);
-      await broadcastState(state);
+      try { data = JSON.parse(text); } catch (_) { data = { ok: false, error: 'parse_error' }; }
+    } else {
+      data = { ok: true };
     }
   } catch (_) {
-    // network error — keep last state
+    data = { ok: false, error: 'network_error' };
+  }
+
+  const state = parseState(data);
+  if (state !== lastState) {
+    lastState = state;
+    await postNotification(state);
+    await updateBadge(state);
+    await broadcastState(state);
   }
 }
 

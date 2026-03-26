@@ -27,7 +27,7 @@ export default async function handler(req, res) {
 
     // Oref returns empty body or "\r\n" when no alerts
     if (!text || !text.trim() || text.trim() === '\r\n') {
-      res.status(200).json({});
+      res.status(200).json({ ok: true });
       return;
     }
 
@@ -35,13 +35,13 @@ export default async function handler(req, res) {
     try {
       data = JSON.parse(text);
     } catch (_) {
-      res.status(200).json({});
+      res.status(200).json({ ok: false, error: 'parse_error' });
       return;
     }
 
-    res.status(200).json(data);
+    res.status(200).json({ ok: true, ...data });
   } catch (err) {
-    // Timeout or network error — return empty (= green/safe)
-    res.status(200).json({});
+    const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
+    res.status(200).json({ ok: false, error: isTimeout ? 'timeout' : 'network_error' });
   }
 }

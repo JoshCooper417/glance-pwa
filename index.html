@@ -24,6 +24,8 @@
       --c-yellow-light: #fde047;
       --c-red: #b91c1c;
       --c-red-light: #ef4444;
+      --c-gray: #374151;
+      --c-gray-light: #9ca3af;
       --transition: 0.4s ease;
     }
 
@@ -83,6 +85,7 @@
     #app.state-green { background-color: var(--c-green); }
     #app.state-yellow { background-color: var(--c-yellow); }
     #app.state-red { background-color: var(--c-red); }
+    #app.state-gray { background-color: var(--c-gray); }
 
     /* TOP BAR */
     #top-bar {
@@ -201,6 +204,7 @@
 
     #app.state-yellow #town-dot { background: var(--c-yellow-light); }
     #app.state-red #town-dot { background: var(--c-red-light); }
+    #app.state-gray #town-dot { background: var(--c-gray-light); }
 
     /* BOTTOM BAR */
     #bottom-bar {
@@ -440,6 +444,15 @@
         theme: '#b91c1c',
         badge: 9,
       },
+      gray: {
+        class: 'state-gray',
+        icon: '⚫',
+        label: 'STATUS · UNKNOWN',
+        main: 'מצב לא ידוע',
+        sub: 'Connection lost. Alert status unknown.',
+        theme: '#374151',
+        badge: 1,
+      },
     };
 
     let currentState = 'green';
@@ -464,9 +477,9 @@
     }
 
     function parseState(data) {
-      if (!data || !Array.isArray(data.data)) return 'green';
-      const items = data.data;
-      const found = items.some(item => typeof item === 'string' && item.trim() === TOWN);
+      if (!data || data.ok === false) return 'gray';
+      if (!Array.isArray(data.data)) return 'green';
+      const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
       if (!found) return 'green';
       const cat = data.cat;
       if (cat === 1 || cat === 2) return 'red';
@@ -486,21 +499,25 @@
     let lastCheckTime = null;
 
     async function poll() {
+      let data = { ok: false, error: 'network_error' };
       try {
         const res = await fetch(`${PROXY_URL}?t=${Date.now()}`, { cache: 'no-store' });
         const text = await res.text();
-        let data = {};
         if (text && text.trim() && text.trim() !== '\r\n') {
-          try { data = JSON.parse(text); } catch (_) { data = {}; }
+          try { data = JSON.parse(text); } catch (_) { data = { ok: false, error: 'parse_error' }; }
+        } else {
+          data = { ok: true };
         }
-        const state = parseState(data);
-        applyState(state);
-        lastCheckTime = new Date();
-        const hm = lastCheckTime.toTimeString().slice(0, 8);
-        pollStatus.textContent = `Last check: ${hm} · every 2s`;
-      } catch (e) {
-        pollStatus.textContent = `Poll error · retrying…`;
+      } catch (_) {
+        data = { ok: false, error: 'network_error' };
       }
+
+      const state = parseState(data);
+      applyState(state);
+      lastCheckTime = new Date();
+      const hm = lastCheckTime.toTimeString().slice(0, 8);
+      const suffix = data.ok === false ? ` · ⚠ ${data.error}` : ' · every 2s';
+      pollStatus.textContent = `Last check: ${hm}${suffix}`;
     }
 
     poll();

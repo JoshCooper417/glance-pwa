@@ -10,36 +10,46 @@ export default async function handler(req, res) {
 
   try {
     const upstream = await fetch(
-      'https://www.oref.org.il/WarningMessages/alert/alerts.json',
+      'https://api.tzevaadom.co.il/notifications?',
       {
-        signal: AbortSignal.timeout(3000),
+        signal: AbortSignal.timeout(5000),
         headers: {
-          'Referer': 'https://www.oref.org.il/',
-          'X-Requested-With': 'XMLHttpRequest',
-          'Accept': 'application/json, text/javascript, */*; q=0.01',
-          'Accept-Language': 'he-IL,he;q=0.9',
+          'Origin': 'https://www.tzevaadom.co.il',
           'User-Agent': 'Mozilla/5.0 (compatible; GlancePWA/1.0)',
+          'Accept': 'application/json',
         },
       }
     );
 
     const text = await upstream.text();
 
-    // Oref returns empty body or "\r\n" when no alerts
-    if (!text || !text.trim() || text.trim() === '\r\n') {
-      res.status(200).json({ ok: true });
-      return;
-    }
-
-    let data;
+    let alerts;
     try {
-      data = JSON.parse(text.replace(/^\uFEFF/, ''));
+      alerts = JSON.parse(text);
     } catch (_) {
       res.status(200).json({ ok: false, error: 'parse_error', raw: text.slice(0, 1000) });
       return;
     }
 
-    res.status(200).json({ ok: true, ...data });
+    // No active alerts — empty array
+    if (!Array.isArray(alerts) || alerts.length === 0) {
+      res.status(200).json({ ok: true });
+      return;
+    }
+
+    // Normalize to { ok, data: [...all cities], cat: <highest-priority threat> }
+    // Threat numbers match Oref category numbers (1=missiles, 2=UAV, 13=preliminary)
+    const allCities = [...new Set(alerts.flatMap(a => a.cities || []))];
+    const highestThreat = alerts.reduce((min, a) => {
+      const t = Number(a.threat);
+      return t < min ? t : min;
+    }, Infinity);
+
+    res.status(200).json({
+      ok: true,
+      data: allCities,
+      cat: highestThreat === Infinity ? null : highestThreat,
+    });
   } catch (err) {
     const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';
     res.status(200).json({ ok: false, error: isTimeout ? 'timeout' : 'network_error' });

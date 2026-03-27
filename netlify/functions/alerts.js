@@ -36,20 +36,21 @@ exports.handler = async function handler(event, context) {
       return { statusCode: 200, headers, body: JSON.stringify({ ok: true }) };
     }
 
+    const THREAT_PRIORITY = [2, 7, 6, 1, 5, 4, 3, 0, 8, 9];
     const allCities = [...new Set(alerts.flatMap(a => a.cities || []))];
-    const highestThreat = alerts.reduce((min, a) => {
+    const highestThreat = alerts.reduce((best, a) => {
       const t = Number(a.threat);
-      return t < min ? t : min;
-    }, Infinity);
+      const tIdx = THREAT_PRIORITY.indexOf(t);
+      const bestIdx = THREAT_PRIORITY.indexOf(best);
+      const tPri = tIdx === -1 ? Infinity : tIdx;
+      const bestPri = bestIdx === -1 ? Infinity : bestIdx;
+      return tPri < bestPri ? t : best;
+    }, null);
 
     return {
       statusCode: 200,
       headers,
-      body: JSON.stringify({
-        ok: true,
-        data: allCities,
-        cat: highestThreat === Infinity ? null : highestThreat,
-      }),
+      body: JSON.stringify({ ok: true, data: allCities, cat: highestThreat }),
     };
   } catch (err) {
     const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';

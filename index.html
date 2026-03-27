@@ -963,8 +963,10 @@
       const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
       if (!found) return 'green';
       const cat = Number(data.cat);
-      if (cat === 1 || cat === 2) return 'red';
-      if (cat === 13) return 'yellow';
+      // tzevaadom threat numbers: 0=rockets, 5=UAV, 6=non-conventional missile → RED
+      //                           2=terrorist infiltration → YELLOW
+      if (cat === 0 || cat === 5 || cat === 6) return 'red';
+      if (cat === 2) return 'yellow';
       return 'green';
     }
 

@@ -2,8 +2,8 @@ const OVERRIDE_KEY = 'glance:override';
 
 const OVERRIDE_DATA = {
   green:  { ok: true },
-  yellow: { ok: true, data: ['גבעות עדן'], cat: 13 },
-  red:    { ok: true, data: ['גבעות עדן'], cat: 1  },
+  yellow: { ok: true, data: ['גבעות עדן'], cat: 2 }, // threat 2 = terrorist infiltration
+  red:    { ok: true, data: ['גבעות עדן'], cat: 0 }, // threat 0 = rockets
 };
 
 async function getOverride() {
@@ -73,17 +73,22 @@ export default async function handler(req, res) {
     }
 
     // Normalize to { ok, data: [...all cities], cat: <highest-priority threat> }
-    // Threat numbers match Oref category numbers (1=missiles, 2=UAV, 13=preliminary)
+    // tzevaadom threat priority order (index 0 = highest priority):
+    const THREAT_PRIORITY = [2, 7, 6, 1, 5, 4, 3, 0, 8, 9];
     const allCities = [...new Set(alerts.flatMap(a => a.cities || []))];
-    const highestThreat = alerts.reduce((min, a) => {
+    const highestThreat = alerts.reduce((best, a) => {
       const t = Number(a.threat);
-      return t < min ? t : min;
-    }, Infinity);
+      const tIdx = THREAT_PRIORITY.indexOf(t);
+      const bestIdx = THREAT_PRIORITY.indexOf(best);
+      const tPri = tIdx === -1 ? Infinity : tIdx;
+      const bestPri = bestIdx === -1 ? Infinity : bestIdx;
+      return tPri < bestPri ? t : best;
+    }, null);
 
     res.status(200).json({
       ok: true,
       data: allCities,
-      cat: highestThreat === Infinity ? null : highestThreat,
+      cat: highestThreat,
     });
   } catch (err) {
     const isTimeout = err.name === 'TimeoutError' || err.name === 'AbortError';

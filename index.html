@@ -700,7 +700,6 @@
       btn.addEventListener('click', () => {
         simState = btn.dataset.state;
         applyState(simState);
-        pollStatus.textContent = `⚠ SIMULATING ${simState.toUpperCase()} — polling paused`;
         document.querySelectorAll('.sim-btn').forEach(b => b.classList.toggle('active-sim', b === btn));
         simRelease.style.display = 'block';
         simActiveLbl.textContent = simState;
@@ -981,7 +980,6 @@
     let lastCheckTime = null;
 
     async function poll() {
-      if (simState !== null) return; // simulation active — don't overwrite
       let data = { ok: false, error: 'network_error' };
       let httpStatus = null;
       try {
@@ -998,11 +996,12 @@
       }
 
       const state = parseState(data);
-      applyState(state);
+      if (simState === null) applyState(state); // don't overwrite local simulation
       lastCheckTime = new Date();
       const hm = lastCheckTime.toTimeString().slice(0, 8);
       const overrideTag = data._override ? ` · ⚠ OVERRIDE:${data._override.toUpperCase()}` : '';
-      const suffix = data.ok === false ? ` · ⚠ ${data.error}` : ` · every 2s${overrideTag}`;
+      const simTag = simState ? ` · SIM:${simState.toUpperCase()}` : '';
+      const suffix = data.ok === false ? ` · ⚠ ${data.error}` : ` · every 2s${overrideTag}${simTag}`;
       pollStatus.textContent = `Last check: ${hm}${suffix}`;
 
       if (debugPanel.classList.contains('open')) {

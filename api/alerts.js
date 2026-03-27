@@ -5,7 +5,7 @@ const OREF_PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const OVERRIDE_DATA = {
   green:  { ok: true },
   yellow: { ok: true, data: [TOWN], cat: 14 },
-  red:    { ok: true, data: [TOWN], cat: 0  },
+  red:    { ok: true, data: [TOWN], cat: 1  },
 };
 
 // ── Redis ─────────────────────────────────────────────────────────────────────

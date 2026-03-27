@@ -975,11 +975,12 @@
       const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
       if (!found) return 'green';
       const cat = Number(data.cat);
-      // tzevaadom: 0=rockets, 5=UAV, 6=non-conv missile → RED; 2=infiltration → YELLOW
-      // oref: 14=preliminary warning → YELLOW
-      if (cat === 0 || cat === 5 || cat === 6) return 'red';
-      if (cat === 2 || cat === 14) return 'yellow';
-      return 'green';
+      // Oref categories: 1=rockets, 3=hostile aircraft, 5=tsunami, 6=infiltration → RED
+      //                  14=preliminary warning → YELLOW
+      if (cat === 1 || cat === 3 || cat === 5 || cat === 6) return 'red';
+      if (cat === 14) return 'yellow';
+      // Unknown category but our town is listed — treat as red
+      return 'red';
     }
 
     // Clock

@@ -493,6 +493,33 @@
     .log-entry.warn { color: #fde047; }
     .log-entry.err  { color: #ef4444; }
     .log-entry.gray { color: #6b7280; }
+
+    .sim-btn {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      font-weight: 600;
+      padding: 6px 12px;
+      border-radius: 5px;
+      border: 1px solid #374151;
+      background: #1f2937;
+      color: #e5e7eb;
+      cursor: pointer;
+      flex: 1;
+    }
+    .sim-btn:active { opacity: 0.7; }
+    .sim-btn.active-sim { border-color: #9ca3af; background: #374151; }
+
+    #sim-release {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: 11px;
+      color: #9ca3af;
+      background: none;
+      border: 1px solid #374151;
+      border-radius: 4px;
+      padding: 5px 10px;
+      cursor: pointer;
+      width: 100%;
+    }
   </style>
 </head>
 <body>
@@ -575,6 +602,20 @@
     </div>
 
     <div class="dbg-section">
+      <div class="dbg-section-title">Simulate State (this device)</div>
+      <div id="sim-local-btns" style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="sim-btn" data-state="green">🟢 Green</button>
+        <button class="sim-btn" data-state="yellow">🟡 Yellow</button>
+        <button class="sim-btn" data-state="red">🔴 Red</button>
+      </div>
+      <div class="dbg-row">
+        <span class="dbg-key">sim active</span>
+        <span class="dbg-val" id="dbg-sim-active">no</span>
+      </div>
+      <button id="sim-release" style="display:none;margin-top:6px;">↩ Release — resume live polling</button>
+    </div>
+
+    <div class="dbg-section">
       <div class="dbg-section-title">Poll Log (last 20)</div>
       <div id="debug-log"></div>
     </div>
@@ -620,6 +661,33 @@
 
     let dbgPollCount = 0, dbgOkCount = 0, dbgErrCount = 0;
     const dbgLog = [];
+
+    // ── Local simulation ───────────────────────────────────────────────────────
+    let simState = null; // null = live, 'green'/'yellow'/'red' = simulated
+
+    const simRelease = document.getElementById('sim-release');
+    const simActiveLbl = document.getElementById('dbg-sim-active');
+
+    document.querySelectorAll('.sim-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        simState = btn.dataset.state;
+        applyState(simState);
+        pollStatus.textContent = `⚠ SIMULATING ${simState.toUpperCase()} — polling paused`;
+        document.querySelectorAll('.sim-btn').forEach(b => b.classList.toggle('active-sim', b === btn));
+        simRelease.style.display = 'block';
+        simActiveLbl.textContent = simState;
+        simActiveLbl.className = 'dbg-val ' + (simState === 'green' ? 'ok' : simState === 'red' ? 'err' : 'warn');
+      });
+    });
+
+    simRelease.addEventListener('click', () => {
+      simState = null;
+      document.querySelectorAll('.sim-btn').forEach(b => b.classList.remove('active-sim'));
+      simRelease.style.display = 'none';
+      simActiveLbl.textContent = 'no';
+      simActiveLbl.className = 'dbg-val';
+      poll(); // immediate live poll
+    });
 
     debugCheckbox.addEventListener('change', () => {
       if (debugCheckbox.checked) {
@@ -803,6 +871,7 @@
     let lastCheckTime = null;
 
     async function poll() {
+      if (simState !== null) return; // simulation active — don't overwrite
       let data = { ok: false, error: 'network_error' };
       let httpStatus = null;
       try {

@@ -1,5 +1,5 @@
-const VERSION = 'glance-v2';
-const PROXY_URL = '/api/alerts';
+const VERSION = 'glance-v3';
+const PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const TOWN = 'גבעות עדן';
 const POLL_INTERVAL = 2000;
 

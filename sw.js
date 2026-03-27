@@ -1,4 +1,4 @@
-const VERSION = 'glance-v4';
+const VERSION = 'glance-v5';
 const PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const TOWN = 'גבעות עדן';
 const POLL_INTERVAL = 2000;
@@ -71,10 +71,11 @@ async function postNotification(state) {
   const n = STATE_NOTIF[state];
   if (!n) return;
 
+  const base = self.registration.scope.replace(/\/$/, '');
   const opts = {
     body: n.body,
-    icon: n.icon,
-    badge: '/icons/badge-96.png',
+    icon: base + n.icon,
+    badge: base + '/icons/badge-96.png',
     tag: 'glance-status',
     renotify: state !== 'green',
     silent: n.silent,

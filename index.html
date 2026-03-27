@@ -602,6 +602,34 @@
     </div>
 
     <div class="dbg-section">
+      <div class="dbg-section-title">Global Override (all devices)</div>
+      <div class="dbg-row" style="margin-bottom:6px;">
+        <span class="dbg-key">admin secret</span>
+        <input id="dbg-admin-secret" type="password" placeholder="paste secret…"
+          style="font-family:'IBM Plex Mono',monospace;font-size:11px;background:#111827;border:1px solid #374151;border-radius:4px;color:#e5e7eb;padding:3px 7px;flex:1;min-width:0;" />
+      </div>
+      <div style="display:flex;gap:8px;margin-bottom:8px;">
+        <button class="sim-btn global-btn" data-state="green">🟢 Green</button>
+        <button class="sim-btn global-btn" data-state="yellow">🟡 Yellow</button>
+        <button class="sim-btn global-btn" data-state="red">🔴 Red</button>
+      </div>
+      <div style="display:flex;gap:6px;margin-bottom:8px;align-items:center;">
+        <span style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#6b7280;">duration (sec)</span>
+        <select id="dbg-duration" style="font-family:'IBM Plex Mono',monospace;font-size:11px;background:#111827;border:1px solid #374151;border-radius:4px;color:#e5e7eb;padding:3px 6px;">
+          <option value="30">30s</option>
+          <option value="60">1 min</option>
+          <option value="120" selected>2 min</option>
+          <option value="300">5 min</option>
+          <option value="600">10 min</option>
+        </select>
+        <button id="global-clear-btn" style="font-family:'IBM Plex Mono',monospace;font-size:10px;color:#9ca3af;background:none;border:1px solid #374151;border-radius:4px;padding:3px 8px;cursor:pointer;margin-left:auto;">✕ Clear</button>
+      </div>
+      <div class="dbg-row"><span class="dbg-key">server override</span><span class="dbg-val" id="dbg-global-status">checking…</span></div>
+      <div class="dbg-row"><span class="dbg-key">expires in</span><span class="dbg-val" id="dbg-global-ttl">—</span></div>
+      <div class="dbg-row" id="dbg-global-err-row" style="display:none"><span class="dbg-key">last error</span><span class="dbg-val err" id="dbg-global-err">—</span></div>
+    </div>
+
+    <div class="dbg-section">
       <div class="dbg-section-title">Simulate State (this device)</div>
       <div id="sim-local-btns" style="display:flex;gap:8px;margin-bottom:8px;">
         <button class="sim-btn" data-state="green">🟢 Green</button>
@@ -689,17 +717,99 @@
       poll(); // immediate live poll
     });
 
+    // ── Global override ────────────────────────────────────────────────────────
+    const adminSecretInput = document.getElementById('dbg-admin-secret');
+    const globalStatusEl = document.getElementById('dbg-global-status');
+    const globalTtlEl = document.getElementById('dbg-global-ttl');
+    const globalErrRow = document.getElementById('dbg-global-err-row');
+    const globalErrEl = document.getElementById('dbg-global-err');
+    let globalStatusTimer = null;
+
+    // Persist secret across sessions
+    adminSecretInput.addEventListener('change', () => {
+      if (adminSecretInput.value) localStorage.setItem('glance-admin-secret', adminSecretInput.value);
+    });
+    const savedSecret = localStorage.getItem('glance-admin-secret');
+    if (savedSecret) adminSecretInput.value = savedSecret;
+
+    async function callAdmin(params) {
+      const secret = adminSecretInput.value.trim();
+      if (!secret) { showGlobalErr('No secret entered'); return null; }
+      const url = '/api/admin?' + new URLSearchParams({ secret, ...params });
+      try {
+        const r = await fetch(url, { cache: 'no-store' });
+        const data = await r.json();
+        if (!data.ok) { showGlobalErr(data.error || 'unknown error'); return null; }
+        globalErrRow.style.display = 'none';
+        return data;
+      } catch (e) {
+        showGlobalErr(e.message);
+        return null;
+      }
+    }
+
+    function showGlobalErr(msg) {
+      globalErrEl.textContent = msg;
+      globalErrRow.style.display = 'flex';
+    }
+
+    async function refreshGlobalStatus() {
+      const data = await callAdmin({ action: 'status' });
+      if (!data) return;
+      if (data.override) {
+        globalStatusEl.textContent = data.override.toUpperCase();
+        globalStatusEl.className = 'dbg-val ' + (data.override === 'green' ? 'ok' : data.override === 'red' ? 'err' : 'warn');
+        globalTtlEl.textContent = data.ttl > 0 ? `${data.ttl}s` : 'expired';
+      } else {
+        globalStatusEl.textContent = 'none (live)';
+        globalStatusEl.className = 'dbg-val ok';
+        globalTtlEl.textContent = '—';
+      }
+    }
+
+    document.querySelectorAll('.global-btn').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        const duration = document.getElementById('dbg-duration').value;
+        const data = await callAdmin({ action: 'set', state: btn.dataset.state, duration });
+        if (data) {
+          document.querySelectorAll('.global-btn').forEach(b => b.classList.toggle('active-sim', b === btn));
+          await refreshGlobalStatus();
+        }
+      });
+    });
+
+    document.getElementById('global-clear-btn').addEventListener('click', async () => {
+      const data = await callAdmin({ action: 'clear' });
+      if (data) {
+        document.querySelectorAll('.global-btn').forEach(b => b.classList.remove('active-sim'));
+        await refreshGlobalStatus();
+      }
+    });
+
+    // Poll override status every 5s while panel is open
+    function startGlobalStatusPoll() {
+      refreshGlobalStatus();
+      globalStatusTimer = setInterval(refreshGlobalStatus, 5000);
+    }
+    function stopGlobalStatusPoll() {
+      clearInterval(globalStatusTimer);
+      globalStatusTimer = null;
+    }
+
     debugCheckbox.addEventListener('change', () => {
       if (debugCheckbox.checked) {
         debugPanel.classList.add('open');
         refreshDebugEnv();
+        startGlobalStatusPoll();
       } else {
         debugPanel.classList.remove('open');
+        stopGlobalStatusPoll();
       }
     });
     debugClose.addEventListener('click', () => {
       debugCheckbox.checked = false;
       debugPanel.classList.remove('open');
+      stopGlobalStatusPoll();
     });
 
     function refreshDebugEnv() {
@@ -891,7 +1001,8 @@
       applyState(state);
       lastCheckTime = new Date();
       const hm = lastCheckTime.toTimeString().slice(0, 8);
-      const suffix = data.ok === false ? ` · ⚠ ${data.error}` : ' · every 2s';
+      const overrideTag = data._override ? ` · ⚠ OVERRIDE:${data._override.toUpperCase()}` : '';
+      const suffix = data.ok === false ? ` · ⚠ ${data.error}` : ` · every 2s${overrideTag}`;
       pollStatus.textContent = `Last check: ${hm}${suffix}`;
 
       if (debugPanel.classList.contains('open')) {

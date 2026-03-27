@@ -1,3 +1,29 @@
+const OVERRIDE_KEY = 'glance:override';
+
+const OVERRIDE_DATA = {
+  green:  { ok: true },
+  yellow: { ok: true, data: ['גבעות עדן'], cat: 13 },
+  red:    { ok: true, data: ['גבעות עדן'], cat: 1  },
+};
+
+async function getOverride() {
+  try {
+    const res = await fetch(process.env.UPSTASH_REDIS_REST_URL, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${process.env.UPSTASH_REDIS_REST_TOKEN}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(['GET', OVERRIDE_KEY]),
+      signal: AbortSignal.timeout(1500),
+    });
+    const { result } = await res.json();
+    return result || null; // 'green'|'yellow'|'red'|null
+  } catch (_) {
+    return null; // Redis unavailable — fall through to live data
+  }
+}
+
 export default async function handler(req, res) {
   res.setHeader('Cache-Control', 'no-store, no-cache');
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -5,6 +31,13 @@ export default async function handler(req, res) {
 
   if (req.method === 'OPTIONS') {
     res.status(204).end();
+    return;
+  }
+
+  // Check for admin override first
+  const override = await getOverride();
+  if (override && OVERRIDE_DATA[override]) {
+    res.status(200).json({ ...OVERRIDE_DATA[override], _override: override });
     return;
   }
 

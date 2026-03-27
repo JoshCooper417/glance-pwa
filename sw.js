@@ -1,4 +1,4 @@
-const VERSION = 'glance-v6';
+const VERSION = 'glance-v7';
 const PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const TOWN = 'גבעות עדן';
 const POLL_INTERVAL = 2000;
@@ -71,11 +71,11 @@ async function postNotification(state) {
   const n = STATE_NOTIF[state];
   if (!n) return;
 
-  const base = self.registration.scope.replace(/\/$/, '');
+  const origin = new URL(self.location).origin;
   const opts = {
     body: n.body,
-    icon: base + n.icon,
-    badge: base + '/icons/badge-96.png',
+    icon: origin + n.icon,
+    badge: origin + '/icons/badge-96.png',
     tag: 'glance-status',
     renotify: state !== 'green',
     silent: n.silent,
@@ -145,9 +145,10 @@ self.addEventListener('install', () => {
 
 self.addEventListener('activate', event => {
   event.waitUntil(
-    self.clients.claim().then(async () => {
-      lastState = 'green';
-      await postNotification('green');
+    self.clients.claim().then(() => {
+      // Don't pre-post green — let the first poll set the real state.
+      // Posting green here caused a flicker (green→yellow) every time
+      // Android restarted the SW.
       startPolling();
     })
   );

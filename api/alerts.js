@@ -1,6 +1,6 @@
 const TOWN = 'גבעות עדן';
 const OVERRIDE_KEY = 'glance:override';
-const OREF_YELLOW_KEY = 'glance:oref-yellow';
+const OREF_PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 
 const OVERRIDE_DATA = {
   green:  { ok: true },
@@ -28,9 +28,10 @@ async function getOverride() {
   try { return await redis('GET', OVERRIDE_KEY); } catch (_) { return null; }
 }
 
-// Returns true if GitHub Actions poller has set the oref-yellow flag in Redis
-async function getOrefYellow() {
-  try { return (await redis('GET', OREF_YELLOW_KEY)) === '1'; } catch (_) { return false; }
+// Calls Cloudflare Worker proxy (bypasses Akamai) to check Oref history for cat 14 yellow
+async function checkOrefYellow() {
+  const res = await fetch(OREF_PROXY_URL, { signal: AbortSignal.timeout(5000) });
+  return await res.json(); // { ok, yellow, latestRecord }
 }
 
 // ── Tzevaadom (RED + infiltration YELLOW) ─────────────────────────────────────
@@ -89,10 +90,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // Fetch both sources in parallel — Oref yellow comes from Redis (written by GitHub Actions poller)
-  const [tzResult, orefYellow] = await Promise.allSettled([
+  // Fetch both sources in parallel
+  const [tzResult, orefResult] = await Promise.allSettled([
     fetchTzevaadom(),
-    getOrefYellow(),
+    checkOrefYellow(),
   ]);
 
   // Determine state — RED wins over YELLOW, tzevaadom wins for RED
@@ -106,13 +107,13 @@ export default async function handler(req, res) {
     sources.tzevaadom = 'error:' + (tzResult.reason?.message || 'unknown');
   }
 
-  if (orefYellow.status === 'fulfilled') {
-    sources.oref = 'redis-ok';
-    if ((!match || match.state !== 'red') && orefYellow.value) {
+  if (orefResult.status === 'fulfilled' && orefResult.value.ok) {
+    sources.oref = 'ok';
+    if ((!match || match.state !== 'red') && orefResult.value.yellow) {
       match = { state: 'yellow', cat: 14 };
     }
   } else {
-    sources.oref = 'error:' + (orefYellow.reason?.message || 'unknown');
+    sources.oref = 'error:' + (orefResult.reason?.message || orefResult.value?.error || 'unknown');
   }
 
   if (match) {

@@ -34,11 +34,13 @@ export default async function handler(req, res) {
     return;
   }
 
-  // Check for admin override first
-  const override = await getOverride();
-  if (override && OVERRIDE_DATA[override]) {
-    res.status(200).json({ ...OVERRIDE_DATA[override], _override: override });
-    return;
+  // Check for admin override first (only when ENABLE_OVERRIDE=true)
+  if (process.env.ENABLE_OVERRIDE === 'true') {
+    const override = await getOverride();
+    if (override && OVERRIDE_DATA[override]) {
+      res.status(200).json({ ...OVERRIDE_DATA[override], _override: override });
+      return;
+    }
   }
 
   try {

@@ -1,5 +1,6 @@
 const TOWN = 'גבעות עדן';
 const OVERRIDE_KEY = 'glance:override';
+const OREF_YELLOW_KEY = 'glance:oref-yellow';
 
 const OVERRIDE_DATA = {
   green:  { ok: true },
@@ -25,6 +26,11 @@ async function redis(...args) {
 
 async function getOverride() {
   try { return await redis('GET', OVERRIDE_KEY); } catch (_) { return null; }
+}
+
+// Returns true if GitHub Actions poller has set the oref-yellow flag in Redis
+async function getOrefYellow() {
+  try { return (await redis('GET', OREF_YELLOW_KEY)) === '1'; } catch (_) { return false; }
 }
 
 // ── Tzevaadom (RED + infiltration YELLOW) ─────────────────────────────────────
@@ -65,40 +71,6 @@ function checkTzevaadom(alerts) {
   return best;
 }
 
-// ── Oref history (YELLOW — cat 14 preliminary warning) ───────────────────────
-
-async function checkOrefYellow() {
-  const res = await fetch(
-    'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1',
-    {
-      signal: AbortSignal.timeout(3000),
-      headers: {
-        'Referer': 'https://www.oref.org.il/',
-        'X-Requested-With': 'XMLHttpRequest',
-        'User-Agent': 'Mozilla/5.0 (compatible; GlancePWA/1.0)',
-      },
-    }
-  );
-  const text = (await res.text()).replace(/^\uFEFF/, '');
-
-  // If Akamai blocks, response is HTML — JSON.parse will throw, caught by caller
-  const records = JSON.parse(text);
-
-  // Filter to our town, sort by rid descending (higher rid = more recent)
-  const town = records
-    .filter(r => r.data === TOWN)
-    .sort((a, b) => b.rid - a.rid);
-
-  if (town.length === 0) return { yellow: false };
-
-  const latest14 = town.find(r => r.category === 14); // preliminary warning
-  const latest13 = town.find(r => r.category === 13); // event ended
-
-  // Yellow if: a cat 14 exists and is more recent than the latest cat 13
-  const yellow = !!(latest14 && (!latest13 || latest14.rid > latest13.rid));
-  return { yellow, latestRecord: town[0] };
-}
-
 // ── Handler ───────────────────────────────────────────────────────────────────
 
 export default async function handler(req, res) {
@@ -117,10 +89,10 @@ export default async function handler(req, res) {
     }
   }
 
-  // Fetch both sources in parallel
-  const [tzResult, orefResult] = await Promise.allSettled([
+  // Fetch both sources in parallel — Oref yellow comes from Redis (written by GitHub Actions poller)
+  const [tzResult, orefYellow] = await Promise.allSettled([
     fetchTzevaadom(),
-    checkOrefYellow(),
+    getOrefYellow(),
   ]);
 
   // Determine state — RED wins over YELLOW, tzevaadom wins for RED
@@ -134,13 +106,13 @@ export default async function handler(req, res) {
     sources.tzevaadom = 'error:' + (tzResult.reason?.message || 'unknown');
   }
 
-  if (orefResult.status === 'fulfilled') {
-    sources.oref = 'ok';
-    if ((!match || match.state !== 'red') && orefResult.value.yellow) {
+  if (orefYellow.status === 'fulfilled') {
+    sources.oref = 'redis-ok';
+    if ((!match || match.state !== 'red') && orefYellow.value) {
       match = { state: 'yellow', cat: 14 };
     }
   } else {
-    sources.oref = 'error:' + (orefResult.reason?.message || 'unknown');
+    sources.oref = 'error:' + (orefYellow.reason?.message || 'unknown');
   }
 
   if (match) {

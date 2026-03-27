@@ -1,0 +1,83 @@
+name: Oref Yellow Poller
+
+on:
+  schedule:
+    - cron: '* * * * *'   # every minute
+  workflow_dispatch:        # manual trigger for testing
+
+jobs:
+  poll:
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Poll Oref history and write to Redis
+        env:
+          UPSTASH_REDIS_REST_URL: ${{ secrets.UPSTASH_REDIS_REST_URL }}
+          UPSTASH_REDIS_REST_TOKEN: ${{ secrets.UPSTASH_REDIS_REST_TOKEN }}
+        run: |
+          TOWN="גבעות עדן"
+
+          # Fetch Oref history — runs from GitHub's Azure/AWS IPs, not blocked by Akamai
+          RESPONSE=$(curl -sf --max-time 10 \
+            -H "Referer: https://www.oref.org.il/" \
+            -H "X-Requested-With: XMLHttpRequest" \
+            -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" \
+            -H "Accept: application/json, text/javascript, */*; q=0.01" \
+            -H "Accept-Language: he-IL,he;q=0.9" \
+            'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1' \
+            2>/dev/null) || { echo "Fetch failed"; exit 0; }
+
+          # Strip UTF-8 BOM if present
+          RESPONSE=$(printf '%s' "$RESPONSE" | sed 's/^\xef\xbb\xbf//')
+
+          # Check if response is JSON (not HTML access denied)
+          if echo "$RESPONSE" | grep -q '<HTML>'; then
+            echo "Blocked by Akamai"
+            exit 0
+          fi
+
+          # Use Node.js to parse the JSON and determine yellow state
+          node -e "
+            const TOWN = '$TOWN';
+            try {
+              const records = JSON.parse(process.env.OREF_DATA);
+              const town = records
+                .filter(r => r.data === TOWN)
+                .sort((a, b) => b.rid - a.rid);
+
+              if (town.length === 0) { process.stdout.write('false'); process.exit(0); }
+
+              const latest14 = town.find(r => r.category === 14);
+              const latest13 = town.find(r => r.category === 13);
+              const yellow = !!(latest14 && (!latest13 || latest14.rid > latest13.rid));
+              process.stdout.write(yellow ? 'true' : 'false');
+            } catch(e) {
+              process.stderr.write('Parse error: ' + e.message);
+              process.stdout.write('error');
+            }
+          " OREF_DATA="$RESPONSE" > /tmp/yellow_state
+
+          YELLOW=$(cat /tmp/yellow_state)
+          echo "Yellow state: $YELLOW"
+
+          if [ "$YELLOW" = "error" ]; then
+            echo "Parse error — leaving Redis unchanged"
+            exit 0
+          fi
+
+          redis() {
+            curl -sf --max-time 5 \
+              -X POST "$UPSTASH_REDIS_REST_URL" \
+              -H "Authorization: Bearer $UPSTASH_REDIS_REST_TOKEN" \
+              -H "Content-Type: application/json" \
+              -d "$1"
+          }
+
+          if [ "$YELLOW" = "true" ]; then
+            # Set with 90s TTL — if poller stops running, it expires within 2 minutes
+            redis '["SET","glance:oref-yellow","1","EX","90"]'
+            echo "Set glance:oref-yellow = 1 (TTL 90s)"
+          else
+            redis '["DEL","glance:oref-yellow"]'
+            echo "Deleted glance:oref-yellow"
+          fi

@@ -14,10 +14,10 @@ function parseState(data) {
   const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
   if (!found) return 'green';
   const cat = Number(data.cat);
-  // tzevaadom threat numbers: 0=rockets, 5=UAV, 6=non-conventional missile → RED
-  //                           2=terrorist infiltration → YELLOW
+  // tzevaadom: 0=rockets, 5=UAV, 6=non-conv missile → RED; 2=infiltration → YELLOW
+  // oref: 14=preliminary warning → YELLOW
   if (cat === 0 || cat === 5 || cat === 6) return 'red';
-  if (cat === 2) return 'yellow';
+  if (cat === 2 || cat === 14) return 'yellow';
   return 'green';
 }
 

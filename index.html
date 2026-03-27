@@ -589,6 +589,8 @@
       <div class="dbg-row"><span class="dbg-key">data.cat</span><span class="dbg-val" id="dbg-cat">—</span></div>
       <div class="dbg-row"><span class="dbg-key">data.data length</span><span class="dbg-val" id="dbg-data-len">—</span></div>
       <div class="dbg-row"><span class="dbg-key">town match</span><span class="dbg-val" id="dbg-town-match">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">src: tzevaadom</span><span class="dbg-val" id="dbg-src-tz">—</span></div>
+      <div class="dbg-row"><span class="dbg-key">src: oref history</span><span class="dbg-val" id="dbg-src-oref">—</span></div>
       <div id="debug-raw">—</div>
     </div>
 
@@ -881,6 +883,16 @@
       tmEl.textContent = Array.isArray(data.data) ? String(townMatch) : '—';
       tmEl.className = 'dbg-val ' + (townMatch ? 'warn' : 'ok');
 
+      // Source status
+      const tzSrc = data._sources?.tzevaadom || '—';
+      const orefSrc = data._sources?.oref || '—';
+      const tzEl = document.getElementById('dbg-src-tz');
+      tzEl.textContent = tzSrc;
+      tzEl.className = 'dbg-val ' + (tzSrc === 'ok' ? 'ok' : 'err');
+      const orefEl = document.getElementById('dbg-src-oref');
+      orefEl.textContent = orefSrc;
+      orefEl.className = 'dbg-val ' + (orefSrc === 'ok' ? 'ok' : 'err');
+
       const rawDisplay = data.raw != null
         ? `/* Oref raw response */\n${data.raw}\n\n/* Full proxy response */\n${JSON.stringify(data, null, 2)}`
         : JSON.stringify(data, null, 2);
@@ -963,10 +975,10 @@
       const found = data.data.some(item => typeof item === 'string' && item.trim() === TOWN);
       if (!found) return 'green';
       const cat = Number(data.cat);
-      // tzevaadom threat numbers: 0=rockets, 5=UAV, 6=non-conventional missile → RED
-      //                           2=terrorist infiltration → YELLOW
+      // tzevaadom: 0=rockets, 5=UAV, 6=non-conv missile → RED; 2=infiltration → YELLOW
+      // oref: 14=preliminary warning → YELLOW
       if (cat === 0 || cat === 5 || cat === 6) return 'red';
-      if (cat === 2) return 'yellow';
+      if (cat === 2 || cat === 14) return 'yellow';
       return 'green';
     }
 

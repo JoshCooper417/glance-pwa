@@ -17,15 +17,25 @@ jobs:
         run: |
           TOWN="גבעות עדן"
 
-          # Fetch Oref history — runs from GitHub's Azure/AWS IPs, not blocked by Akamai
-          RESPONSE=$(curl -sf --max-time 10 \
+          # Fetch Oref history — runs from GitHub's Azure IPs
+          HTTP_CODE=$(curl -s -o /tmp/oref_response.txt -w "%{http_code}" --max-time 10 \
             -H "Referer: https://www.oref.org.il/" \
             -H "X-Requested-With: XMLHttpRequest" \
             -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/123.0.0.0 Safari/537.36" \
             -H "Accept: application/json, text/javascript, */*; q=0.01" \
             -H "Accept-Language: he-IL,he;q=0.9" \
-            'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1' \
-            2>/dev/null) || { echo "Fetch failed"; exit 0; }
+            'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1') \
+            || { echo "Fetch failed (curl error)"; exit 0; }
+
+          echo "HTTP status: $HTTP_CODE"
+          echo "Response preview: $(head -c 200 /tmp/oref_response.txt)"
+
+          if [ "$HTTP_CODE" != "200" ]; then
+            echo "Non-200 response — leaving Redis unchanged"
+            exit 0
+          fi
+
+          RESPONSE=$(cat /tmp/oref_response.txt)
 
           # Strip UTF-8 BOM if present
           RESPONSE=$(printf '%s' "$RESPONSE" | sed 's/^\xef\xbb\xbf//')

@@ -1,4 +1,4 @@
-const VERSION = 'glance-v5';
+const VERSION = 'glance-v6';
 const PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const TOWN = 'גבעות עדן';
 const POLL_INTERVAL = 2000;
@@ -175,7 +175,7 @@ self.addEventListener('message', event => {
 // red: 15s, yellow: 2min, green/gray: 10min (keeps SW alive without being intrusive)
 
 self.addEventListener('notificationclose', event => {
-  const REPOST_DELAY = { red: 15000, yellow: 120000, green: 600000, gray: 600000 };
+  const REPOST_DELAY = { red: 10000, yellow: 10000, green: 600000, gray: 600000 };
   const state = lastState || (event.notification.data && event.notification.data.state) || 'green';
   const delay = REPOST_DELAY[state] ?? 600000;
 

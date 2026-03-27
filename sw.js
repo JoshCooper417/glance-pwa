@@ -1,4 +1,4 @@
-const VERSION = 'glance-v7';
+const VERSION = 'glance-v8';
 const PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const TOWN = 'גבעות עדן';
 const POLL_INTERVAL = 2000;
@@ -26,18 +26,18 @@ function parseState(data) {
 
 const STATE_NOTIF = {
   green: {
-    title: '🟢 גבעות עדן — All Clear',
-    body: 'No active alerts. Normal activity.',
+    title: 'Glance · All Clear',
+    body: '🟢 גבעות עדן — No active alerts.',
     icon: '/icons/icon-green-192.png',
-    silent: true,
-    vibrate: null,
+    silent: false,
+    vibrate: [],
     requireInteraction: true,
     badge: 0,
     actions: [],
   },
   yellow: {
-    title: '🟡 גבעות עדן — Stay Near Shelter',
-    body: 'Preliminary warning issued. Stay near a protected space.',
+    title: 'Glance · ⚠️ WARNING — Stay Near Shelter',
+    body: '🟡 גבעות עדן — Preliminary warning active. Stay near a protected space.',
     icon: '/icons/icon-yellow-192.png',
     silent: false,
     vibrate: [200, 100, 200],
@@ -46,8 +46,8 @@ const STATE_NOTIF = {
     actions: [{ action: 'open', title: '👁 Open Glance' }],
   },
   red: {
-    title: '🔴 גבעות עדן — ENTER SHELTER NOW',
-    body: 'ACTIVE SIREN. Enter your protected space immediately.',
+    title: 'Glance · 🚨 SIREN — ENTER SHELTER NOW',
+    body: '🔴 גבעות עדן — Active siren. Enter your protected space immediately.',
     icon: '/icons/icon-red-192.png',
     silent: false,
     vibrate: [300, 100, 300, 100, 300, 100, 300],
@@ -56,11 +56,11 @@ const STATE_NOTIF = {
     actions: [{ action: 'open', title: '👁 Open Glance' }],
   },
   gray: {
-    title: '⚫ גבעות עדן — Status Unknown',
-    body: 'Cannot reach alert service. Status unknown.',
+    title: 'Glance · Status Unknown',
+    body: '⚫ גבעות עדן — Cannot reach alert service.',
     icon: '/icons/icon-green-192.png',
-    silent: true,
-    vibrate: null,
+    silent: false,
+    vibrate: [],
     requireInteraction: true,
     badge: 1,
     actions: [{ action: 'open', title: '👁 Open Glance' }],

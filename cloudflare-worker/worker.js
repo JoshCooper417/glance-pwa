@@ -81,9 +81,15 @@ async function checkOrefLive() {
   return { state: 'red', cat };
 }
 
-// ── Oref history (YELLOW — cat 14 preliminary warning) ───────────────────────
+// ── Oref history (RED post-siren + YELLOW preliminary warning) ───────────────
+// Returns { state: 'red'|'yellow', cat } or null
+//
+// State machine (all based on rid ordering — higher rid = more recent):
+//   cat 1/3/5/6 fired, no cat 13 after it  → RED  (stay in shelter until event closed)
+//   cat 14 active, no siren or cat 13 after → YELLOW (preliminary warning)
+//   cat 13 is the most recent significant event → null (all clear)
 
-async function checkOrefYellow() {
+async function checkOrefHistory() {
   const res = await fetch(
     'https://alerts-history.oref.org.il/Shared/Ajax/GetAlarmsHistory.aspx?lang=he&mode=1',
     {
@@ -102,20 +108,25 @@ async function checkOrefYellow() {
 
   const records = JSON.parse(text);
   const town = records.filter(r => r.data === TOWN).sort((a, b) => b.rid - a.rid);
-  if (town.length === 0) return false;
+  if (town.length === 0) return null;
 
-  const latest14     = town.find(r => r.category === 14);           // preliminary warning
-  const latest13     = town.find(r => r.category === 13);           // event ended
-  const latestSiren  = town.find(r => OREF_RED.has(r.category));    // actual siren already fired
+  const latest13    = town.find(r => r.category === 13);           // event ended
+  const latest14    = town.find(r => r.category === 14);           // preliminary warning
+  const latestSiren = town.find(r => OREF_RED.has(r.category));    // actual siren
 
-  // Yellow only if cat 14 is newer than both:
-  // - cat 13 (event ended / all clear)
-  // - any actual siren (if siren already fired after cat 14, the warning is consumed)
-  return !!(
-    latest14 &&
-    (!latest13   || latest14.rid > latest13.rid) &&
-    (!latestSiren || latest14.rid > latestSiren.rid)
-  );
+  // Post-siren RED: siren fired and not yet closed by cat 13
+  if (latestSiren && (!latest13 || latestSiren.rid > latest13.rid)) {
+    return { state: 'red', cat: latestSiren.category };
+  }
+
+  // Preliminary YELLOW: cat 14 active, siren hasn't fired yet
+  if (latest14 &&
+      (!latest13    || latest14.rid > latest13.rid) &&
+      (!latestSiren || latest14.rid > latestSiren.rid)) {
+    return { state: 'yellow', cat: 14 };
+  }
+
+  return null;
 }
 
 // ── Redis ────────────────────────────────────────────────────────────────────
@@ -173,9 +184,9 @@ export default {
     let match = null;
 
     // ── Primary: Oref live (RED) + Oref history (YELLOW) ──────────────────────
-    const [liveResult, yellowResult] = await Promise.allSettled([
+    const [liveResult, historyResult] = await Promise.allSettled([
       checkOrefLive(),
-      checkOrefYellow(),
+      checkOrefHistory(),
     ]);
 
     if (liveResult.status === 'fulfilled') {
@@ -185,11 +196,13 @@ export default {
       sources.oref_live = 'error:' + (liveResult.reason?.message || 'unknown');
     }
 
-    if (yellowResult.status === 'fulfilled') {
+    if (historyResult.status === 'fulfilled') {
       sources.oref_history = 'ok';
-      if (!match && yellowResult.value) match = { state: 'yellow', cat: 14 };
+      // History can upgrade to red or set yellow, but never downgrade an existing red
+      if (!match && historyResult.value) match = historyResult.value;
+      else if (match?.state !== 'red' && historyResult.value?.state === 'red') match = historyResult.value;
     } else {
-      sources.oref_history = 'error:' + (yellowResult.reason?.message || 'unknown');
+      sources.oref_history = 'error:' + (historyResult.reason?.message || 'unknown');
     }
 
     // ── Optional: tzevaadom (enabled via USE_TZEVAADOM=true) ──────────────────

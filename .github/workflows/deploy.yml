@@ -1,0 +1,29 @@
+name: Test and Deploy
+
+on:
+  push:
+    branches: [master]
+
+jobs:
+  test-and-deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Run unit tests
+        run: node --test cloudflare-worker/history.test.js
+
+      - name: Deploy Cloudflare Worker
+        if: success()
+        uses: cloudflare/wrangler-action@v3
+        with:
+          apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          workingDirectory: cloudflare-worker
+
+      - name: Deploy to Vercel
+        if: success()
+        run: npx vercel --prod --yes --token ${{ secrets.VERCEL_TOKEN }}

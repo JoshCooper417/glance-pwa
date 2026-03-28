@@ -1,0 +1,9 @@
+{
+  "type": "module",
+  "scripts": {
+    "test": "node --test cloudflare-worker/history.test.js"
+  },
+  "dependencies": {
+    "canvas": "^3.2.2"
+  }
+}

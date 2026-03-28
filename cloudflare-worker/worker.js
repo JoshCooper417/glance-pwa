@@ -10,10 +10,11 @@
 const TOWN = 'גבעות עדן';
 const OVERRIDE_KEY = 'glance:override';
 
+import { evaluateHistory, OREF_RED } from './history.js';
+
 // Oref live categories → state mapping
 // 1=rockets/missiles, 3=hostile aircraft, 5=tsunami, 6=terrorist infiltration → RED
 // 14=preliminary warning → YELLOW
-const OREF_RED    = new Set([1, 3, 5, 6]);
 const OREF_YELLOW = new Set([14]);
 
 // ── Tzevaadom (kept but disabled by default — USE_TZEVAADOM=true to enable) ──
@@ -107,26 +108,7 @@ async function checkOrefHistory() {
   if (text.includes('<HTML>') || text.includes('Access Denied')) throw new Error('blocked');
 
   const records = JSON.parse(text);
-  const town = records.filter(r => r.data === TOWN).sort((a, b) => b.rid - a.rid);
-  if (town.length === 0) return null;
-
-  const latest13    = town.find(r => r.category === 13);           // event ended
-  const latest14    = town.find(r => r.category === 14);           // preliminary warning
-  const latestSiren = town.find(r => OREF_RED.has(r.category));    // actual siren
-
-  // Post-siren RED: siren fired and not yet closed by cat 13
-  if (latestSiren && (!latest13 || latestSiren.rid > latest13.rid)) {
-    return { state: 'red', cat: latestSiren.category };
-  }
-
-  // Preliminary YELLOW: cat 14 active, siren hasn't fired yet
-  if (latest14 &&
-      (!latest13    || latest14.rid > latest13.rid) &&
-      (!latestSiren || latest14.rid > latestSiren.rid)) {
-    return { state: 'yellow', cat: 14 };
-  }
-
-  return null;
+  return evaluateHistory(records, TOWN);
 }
 
 // ── Redis ────────────────────────────────────────────────────────────────────

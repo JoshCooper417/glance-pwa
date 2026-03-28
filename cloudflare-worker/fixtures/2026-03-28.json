@@ -1,0 +1,36 @@
+{
+  "date": "2026-03-28",
+  "description": "First real test of the app. Preliminary warning followed by a rocket siren, then all-clear.",
+  "records": [
+    {
+      "data": "גבעות עדן",
+      "date": "28.03.2026",
+      "time": "14:17:12",
+      "alertDate": "2026-03-28T14:17:00",
+      "category": 14,
+      "category_desc": "בדקות הקרובות צפויות להתקבל התרעות באזורך",
+      "matrix_id": 10,
+      "rid": 608444
+    },
+    {
+      "data": "גבעות עדן",
+      "date": "28.03.2026",
+      "time": "14:21:36",
+      "alertDate": "2026-03-28T14:22:00",
+      "category": 1,
+      "category_desc": "ירי רקטות וטילים",
+      "matrix_id": 1,
+      "rid": 608979
+    },
+    {
+      "data": "גבעות עדן",
+      "date": "28.03.2026",
+      "time": "14:37:23",
+      "alertDate": "2026-03-28T14:37:00",
+      "category": 13,
+      "category_desc": "האירוע הסתיים",
+      "matrix_id": 10,
+      "rid": 609420
+    }
+  ]
+}

@@ -104,9 +104,18 @@ async function checkOrefYellow() {
   const town = records.filter(r => r.data === TOWN).sort((a, b) => b.rid - a.rid);
   if (town.length === 0) return false;
 
-  const latest14 = town.find(r => r.category === 14);
-  const latest13 = town.find(r => r.category === 13);
-  return !!(latest14 && (!latest13 || latest14.rid > latest13.rid));
+  const latest14     = town.find(r => r.category === 14);           // preliminary warning
+  const latest13     = town.find(r => r.category === 13);           // event ended
+  const latestSiren  = town.find(r => OREF_RED.has(r.category));    // actual siren already fired
+
+  // Yellow only if cat 14 is newer than both:
+  // - cat 13 (event ended / all clear)
+  // - any actual siren (if siren already fired after cat 14, the warning is consumed)
+  return !!(
+    latest14 &&
+    (!latest13   || latest14.rid > latest13.rid) &&
+    (!latestSiren || latest14.rid > latestSiren.rid)
+  );
 }
 
 // ── Redis ────────────────────────────────────────────────────────────────────

@@ -1,6 +1,7 @@
 name = "glance-oref-proxy"
 main = "worker.js"
 compatibility_date = "2024-01-01"
+account_id = "83c6d4e17901a8c15ff994f6f8bc7a15"
 
 [placement]
 mode = "smart"

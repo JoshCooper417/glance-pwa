@@ -669,7 +669,7 @@
     const TOWN = 'גבעות עדן';
     const POLL_INTERVAL = 2000;
 
-    const SHOW_DEBUG = false; // set true to show debug panel toggle
+    let showDebug = false; // controlled by _config.showDebug in poll response
 
     const app = document.getElementById('app');
     const clockEl = document.getElementById('clock');
@@ -691,7 +691,8 @@
     const debugPanel = document.getElementById('debug-panel');
     const debugClose = document.getElementById('debug-close');
 
-    document.getElementById('debug-toggle-wrap').style.display = SHOW_DEBUG ? 'flex' : 'none';
+    const debugToggleWrap = document.getElementById('debug-toggle-wrap');
+    debugToggleWrap.style.display = 'none'; // hidden until first poll confirms showDebug
 
     let dbgPollCount = 0, dbgOkCount = 0, dbgErrCount = 0;
     const dbgLog = [];
@@ -1016,6 +1017,11 @@
 
       const state = parseState(data);
       if (simState === null) applyState(state); // don't overwrite local simulation
+
+      if (data._config?.showDebug !== undefined) {
+        showDebug = data._config.showDebug;
+        debugToggleWrap.style.display = showDebug ? 'flex' : 'none';
+      }
       lastCheckTime = new Date();
       const hm = lastCheckTime.toTimeString().slice(0, 8);
       const overrideTag = data._override ? ` · ⚠ OVERRIDE:${data._override.toUpperCase()}` : '';

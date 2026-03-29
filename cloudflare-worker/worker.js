@@ -202,9 +202,11 @@ export default {
       }
     }
 
+    const config = { showDebug: env.SHOW_DEBUG === 'true' };
+
     const body = match
-      ? JSON.stringify({ ok: true, data: [TOWN], cat: match.cat, _sources: sources })
-      : JSON.stringify({ ok: true, _sources: sources });
+      ? JSON.stringify({ ok: true, data: [TOWN], cat: match.cat, _sources: sources, _config: config })
+      : JSON.stringify({ ok: true, _sources: sources, _config: config });
 
     return new Response(body, { headers });
   },

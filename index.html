@@ -345,11 +345,8 @@
       cursor: pointer;
     }
 
-    /* DEBUG TOGGLE — set display:none to disable, flex to re-enable */
+    /* DEBUG TOGGLE */
     #debug-toggle-wrap {
-      display: none !important;
-    }
-    #debug-toggle-wrap-ENABLED {
       position: fixed;
       bottom: calc(env(safe-area-inset-bottom, 0px) + 10px);
       left: calc(env(safe-area-inset-left, 0px) + 12px);
@@ -672,6 +669,8 @@
     const TOWN = 'גבעות עדן';
     const POLL_INTERVAL = 2000;
 
+    const SHOW_DEBUG = false; // set true to show debug panel toggle
+
     const app = document.getElementById('app');
     const clockEl = document.getElementById('clock');
     const stateIcon = document.getElementById('state-icon');
@@ -691,6 +690,8 @@
     const debugCheckbox = document.getElementById('debug-checkbox');
     const debugPanel = document.getElementById('debug-panel');
     const debugClose = document.getElementById('debug-close');
+
+    document.getElementById('debug-toggle-wrap').style.display = SHOW_DEBUG ? 'flex' : 'none';
 
     let dbgPollCount = 0, dbgOkCount = 0, dbgErrCount = 0;
     const dbgLog = [];

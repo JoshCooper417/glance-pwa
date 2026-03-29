@@ -5,6 +5,10 @@
       "dest": "/api/alerts.js"
     },
     {
+      "src": "/api/config",
+      "dest": "/api/config.js"
+    },
+    {
       "src": "/api/oref-test",
       "dest": "/api/oref-test.js"
     },

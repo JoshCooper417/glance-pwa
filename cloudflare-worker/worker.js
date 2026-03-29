@@ -181,7 +181,7 @@ export default {
     if (historyResult.status === 'fulfilled') {
       sources.oref_history = 'ok';
       // History can upgrade to red or set yellow, but never downgrade an existing red
-      if (!match && historyResult.value) match = historyResult.value;
+      if (!match && historyResult.value?.state !== 'green') match = historyResult.value;
       else if (match?.state !== 'red' && historyResult.value?.state === 'red') match = historyResult.value;
     } else {
       sources.oref_history = 'error:' + (historyResult.reason?.message || 'unknown');
@@ -203,10 +203,11 @@ export default {
     }
 
     const config = { showDebug: env.SHOW_DEBUG === 'true' };
+    const ts = historyResult.status === 'fulfilled' ? historyResult.value?.ts : null;
 
     const body = match
-      ? JSON.stringify({ ok: true, data: [TOWN], cat: match.cat, _sources: sources, _config: config })
-      : JSON.stringify({ ok: true, _sources: sources, _config: config });
+      ? JSON.stringify({ ok: true, data: [TOWN], cat: match.cat, _ts: ts, _sources: sources, _config: config })
+      : JSON.stringify({ ok: true, _ts: ts, _sources: sources, _config: config });
 
     return new Response(body, { headers });
   },

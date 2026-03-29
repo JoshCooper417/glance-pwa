@@ -179,6 +179,16 @@
       direction: ltr;
     }
 
+    #last-update {
+      font-family: 'IBM Plex Mono', monospace;
+      font-size: clamp(10px, 2.2vw, 12px);
+      font-weight: 400;
+      color: rgba(255,255,255,0.5);
+      letter-spacing: 0.04em;
+      direction: ltr;
+      min-height: 1.5em;
+    }
+
     #town-badge {
       display: inline-flex;
       align-items: center;
@@ -539,6 +549,7 @@
       <div id="status-label">STATUS · SAFE</div>
       <div id="main-msg">מצב רגיל</div>
       <div id="sub-msg">Status: Safe. Normal activity.</div>
+      <div id="last-update"></div>
       <div id="town-badge">
         <span id="town-dot"></span>
         <span>גבעות עדן</span>
@@ -677,6 +688,7 @@
     const statusLabel = document.getElementById('status-label');
     const mainMsg = document.getElementById('main-msg');
     const subMsg = document.getElementById('sub-msg');
+    const lastUpdateEl = document.getElementById('last-update');
     const themeMeta = document.getElementById('theme-color-meta');
     const pollStatus = document.getElementById('poll-status');
     const installBtn = document.getElementById('install-btn');
@@ -914,6 +926,39 @@
       logEl.innerHTML = dbgLog.map(e => `<div class="log-entry ${e.cls}">${e.label}</div>`).join('');
     }
 
+    // ── Last update formatting ─────────────────────────────────────────────────
+
+    function fmtTime(isoString) {
+      if (!isoString) return null;
+      const d = new Date(isoString);
+      const hm = d.toTimeString().slice(0, 5);
+      const now = new Date();
+      if (d.toDateString() === now.toDateString()) return hm;
+      const dd = String(d.getDate()).padStart(2, '0');
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      return `${dd}/${mm} ${hm}`;
+    }
+
+    function formatLastUpdate(state, ts) {
+      if (!ts) return '';
+      if (state === 'green') {
+        const t = fmtTime(ts.allClear);
+        return t ? `All clear since ${t}` : 'No recent alerts';
+      }
+      if (state === 'yellow') {
+        const t = fmtTime(ts.warning);
+        return t ? `Warning since ${t}` : 'Warning active';
+      }
+      if (state === 'red') {
+        const w = fmtTime(ts.warning);
+        const s = fmtTime(ts.siren);
+        if (w && s) return `Warning at ${w} · Siren at ${s}`;
+        if (s)      return `Siren at ${s}`;
+        return 'Siren active';
+      }
+      return '';
+    }
+
     const STATES = {
       green: {
         class: 'state-green',
@@ -1018,6 +1063,7 @@
       const state = parseState(data);
       if (simState === null) {
         applyState(state);
+        lastUpdateEl.textContent = formatLastUpdate(state, data._ts || null);
         if (data.ok !== false) localStorage.setItem('glance:lastState', JSON.stringify({ state, ts: Date.now() }));
       }
       lastCheckTime = new Date();

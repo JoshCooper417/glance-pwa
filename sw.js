@@ -1,7 +1,8 @@
-const VERSION = 'glance-v8';
+const VERSION = 'glance-v9';
 const PROXY_URL = 'https://glance-oref-proxy.joshcooper417.workers.dev';
 const TOWN = 'גבעות עדן';
 const POLL_INTERVAL = 2000;
+const ENABLE_NOTIFICATIONS = false; // notification UX is not yet stable — disabled until further iteration
 
 let lastState = null;
 let pollTimer = null;
@@ -125,8 +126,10 @@ async function doPoll() {
   const state = parseState(data);
   if (state !== lastState) {
     lastState = state;
-    await postNotification(state);
-    await updateBadge(state);
+    if (ENABLE_NOTIFICATIONS) {
+      await postNotification(state);
+      await updateBadge(state);
+    }
     await broadcastState(state);
   }
 }
@@ -176,6 +179,7 @@ self.addEventListener('message', event => {
 // red: 15s, yellow: 2min, green/gray: 10min (keeps SW alive without being intrusive)
 
 self.addEventListener('notificationclose', event => {
+  if (!ENABLE_NOTIFICATIONS) return;
   const REPOST_DELAY = { red: 10000, yellow: 10000, green: 600000, gray: 600000 };
   const state = lastState || (event.notification.data && event.notification.data.state) || 'green';
   const delay = REPOST_DELAY[state] ?? 600000;
@@ -189,6 +193,7 @@ self.addEventListener('notificationclose', event => {
 // ── Notification click ────────────────────────────────────────────────────────
 
 self.addEventListener('notificationclick', event => {
+  if (!ENABLE_NOTIFICATIONS) return;
   event.notification.close();
 
   const action = event.action;

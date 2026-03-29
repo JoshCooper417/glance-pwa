@@ -1018,7 +1018,7 @@
       const state = parseState(data);
       if (simState === null) {
         applyState(state);
-        if (data.ok !== false) localStorage.setItem('glance:lastState', state);
+        if (data.ok !== false) localStorage.setItem('glance:lastState', JSON.stringify({ state, ts: Date.now() }));
       }
       lastCheckTime = new Date();
       const hm = lastCheckTime.toTimeString().slice(0, 8);
@@ -1041,9 +1041,15 @@
       }
     }
 
-    // Restore last known state immediately (avoids gray/green flash on reload)
-    const cachedState = localStorage.getItem('glance:lastState');
-    applyState(cachedState || 'gray');
+    // Restore last known state only if from the last 5 seconds (e.g. page refresh).
+    // Otherwise show gray — stale state is worse than unknown.
+    const CACHE_TTL = 5000;
+    let initialState = 'gray';
+    try {
+      const cached = JSON.parse(localStorage.getItem('glance:lastState') || 'null');
+      if (cached && (Date.now() - cached.ts) < CACHE_TTL) initialState = cached.state;
+    } catch (_) {}
+    applyState(initialState);
 
     // Fetch config from server (SHOW_DEBUG flag etc.) — fast, no external calls
     fetch('/api/config').then(r => r.json()).then(cfg => {
